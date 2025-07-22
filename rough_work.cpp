@@ -130,21 +130,16 @@ const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 // ====================
 // MAIN FUNCTION TEMPLATE
 // ====================
-void solve() {
+int solve() {
     // Your solution code goes here
-    string input;
-    cin>>input;
-    int n=input.size();
-    if(n>10){
-        string ans="";
-        ans+=input[0];
-        ans+=to_string(n-2);
-        ans+=input[n-1];
-        cout<<ans<<"\n";
+    int a;
+    int count=0;
+    for(int i=0;i<3;i++){
+        cin>>a;
+        if(a==1){count++;}
     }
-    else{
-        cout<<input<<"\n";
-    }
+    if(count>=2){return 1;}
+    return 0;
 }
 
 int main() {
@@ -152,11 +147,12 @@ int main() {
     
     int t = 1;
     cin >> t;  
-    
+    int ans=0;
+
     while (t--) {
-        solve();
+        ans+=solve();
     }
-    
+    cout<<ans<<"\n";
     return 0;
 }
 
