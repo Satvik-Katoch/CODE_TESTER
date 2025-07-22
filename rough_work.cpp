@@ -132,14 +132,26 @@ const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 // ====================
 void solve() {
     // Your solution code goes here
-    
+    string input;
+    cin>>input;
+    int n=input.size();
+    if(n>10){
+        string ans="";
+        ans+=input[0];
+        ans+=to_string(n-2);
+        ans+=input[n-1];
+        cout<<ans<<"\n";
+    }
+    else{
+        cout<<input<<"\n";
+    }
 }
 
 int main() {
     fast_io;
     
     int t = 1;
-    // cin >> t;  // Uncomment for multiple test cases
+    cin >> t;  
     
     while (t--) {
         solve();
