@@ -8,9 +8,8 @@ import difflib
 
 class CppGraderApp(tk.Tk):
     """
-    An advanced GUI to compile, run, and test C++ code, featuring a modern
-    top-right toggle and an enhanced code editor with proper tab handling
-    and auto-pairing of brackets/quotes.
+    An advanced GUI to compile, run, and test C++ code, featuring grouped
+    Paste/Clear buttons and an enhanced code editor.
     """
     def __init__(self):
         super().__init__()
@@ -49,8 +48,8 @@ class CppGraderApp(tk.Tk):
         self.style.configure("Top.TButton", font=("Segoe UI", 10, "bold"), background="#007ACC", foreground="white", borderwidth=0, padding=(10, 5))
         self.style.map("Top.TButton", background=[('active', '#005f9e')])
         
-        self.style.configure("Paste.TButton", font=("Segoe UI", 8), background="#4F5563", foreground="white", borderwidth=0, padding=(5, 2))
-        self.style.map("Paste.TButton", background=[('active', '#6A7180')])
+        self.style.configure("Tool.TButton", font=("Segoe UI", 8), background="#4F5563", foreground="white", borderwidth=0, padding=(5, 2))
+        self.style.map("Tool.TButton", background=[('active', '#6A7180')])
 
         nav_font = ("Segoe UI", 9)
         self.style.configure("Nav.TButton", font=nav_font, padding=(10, 4), borderwidth=1, relief=tk.FLAT)
@@ -84,25 +83,37 @@ class CppGraderApp(tk.Tk):
         main_pane = ttk.PanedWindow(self.editor_frame, orient=tk.HORIZONTAL)
         main_pane.pack(expand=True, fill=tk.BOTH, padx=10, pady=(0, 10))
 
+        # --- C++ Code Section ---
         left_frame = ttk.Frame(main_pane, padding=(0, 5, 5, 5))
         left_frame.grid_rowconfigure(1, weight=1)
         left_frame.grid_columnconfigure(0, weight=1)
+        
         cpp_header_frame = ttk.Frame(left_frame)
         cpp_header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         ttk.Label(cpp_header_frame, text="C++ Code", font=self.title_font).pack(side=tk.LEFT)
-        ttk.Button(cpp_header_frame, text="Paste", command=self.paste_to_cpp_code, style="Paste.TButton").pack(side=tk.RIGHT)
+        
+        # Button Group for C++ Code
+        tool_btn_frame_cpp = ttk.Frame(cpp_header_frame)
+        tool_btn_frame_cpp.pack(side=tk.RIGHT)
+        ttk.Button(tool_btn_frame_cpp, text="Paste", command=self.paste_to_cpp_code, style="Tool.TButton").pack(side=tk.LEFT, padx=(0, 1))
+        ttk.Button(tool_btn_frame_cpp, text="Clear", command=self.clear_cpp_code, style="Tool.TButton").pack(side=tk.LEFT)
+        
         self.cpp_code_text = scrolledtext.ScrolledText(left_frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", insertbackground="white", relief=tk.FLAT, borderwidth=0, undo=True)
         self.cpp_code_text.grid(row=1, column=0, sticky="nsew")
         self.cpp_code_text.insert(tk.END, "#include <iostream>\n\nint main() {\n    // Your code here\n    std::cout << \"Hello, Satvik!\";\n    return 0;\n}")
         main_pane.add(left_frame, weight=2)
 
+        # --- Right Pane ---
         right_pane = ttk.PanedWindow(main_pane, orient=tk.VERTICAL)
         main_pane.add(right_pane, weight=1)
-        input_frame, self.input_text = self._create_text_area_with_header(right_pane, "Input", self.paste_to_input)
+        
+        input_frame, self.input_text = self._create_text_area_with_header(right_pane, "Input", self.paste_to_input, self.clear_input)
         right_pane.add(input_frame, weight=1)
-        desired_output_frame, self.desired_output_text = self._create_text_area_with_header(right_pane, "Desired Output", self.paste_to_desired_output)
+        
+        desired_output_frame, self.desired_output_text = self._create_text_area_with_header(right_pane, "Desired Output", self.paste_to_desired_output, self.clear_desired_output)
         right_pane.add(desired_output_frame, weight=1)
-        status_frame, self.status_text = self._create_text_area_with_header(right_pane, "Execution Status", None)
+        
+        status_frame, self.status_text = self._create_text_area_with_header(right_pane, "Execution Status", None, self.clear_status)
         self.status_text.configure(state='disabled')
         right_pane.add(status_frame, weight=2)
 
@@ -116,8 +127,6 @@ class CppGraderApp(tk.Tk):
         """Binds keys to provide a better code editing experience."""
         self.cpp_code_text.bind("<Tab>", self._handle_tab)
         self.cpp_code_text.bind("<Shift-Tab>", self._handle_shift_tab)
-        
-        # Auto-pairing for brackets and quotes
         self.cpp_code_text.bind("(", self._handle_key_pair)
         self.cpp_code_text.bind("[", self._handle_key_pair)
         self.cpp_code_text.bind("{", self._handle_key_pair)
@@ -125,47 +134,41 @@ class CppGraderApp(tk.Tk):
         self.cpp_code_text.bind('"', self._handle_key_pair)
 
     def _handle_tab(self, event):
-        """Inserts 4 spaces for indentation."""
         self.cpp_code_text.insert(tk.INSERT, " " * 4)
         return "break"
 
     def _handle_shift_tab(self, event):
-        """Un-indents the current line by removing up to 4 spaces."""
         line_start = self.cpp_code_text.index(f"{tk.INSERT} linestart")
-        current_chars = self.cpp_code_text.get(line_start, f"{line_start} + 4 chars")
-        
-        spaces_to_remove = 0
-        for char in current_chars:
-            if char == " ":
-                spaces_to_remove += 1
-            else:
-                break
-        
-        if spaces_to_remove > 0:
-            self.cpp_code_text.delete(line_start, f"{line_start} + {spaces_to_remove} chars")
+        line_end = self.cpp_code_text.index(f"{tk.INSERT} lineend")
+        line = self.cpp_code_text.get(line_start, line_end)
+        if line.startswith(" " * 4):
+            self.cpp_code_text.delete(line_start, f"{line_start}+4c")
         return "break"
 
     def _handle_key_pair(self, event):
-        """Auto-pairs brackets and quotes."""
         key_map = {'(': ')', '[': ']', '{': '}', "'": "'", '"': '"'}
         char = event.char
-        
-        # Insert the pair
         self.cpp_code_text.insert(tk.INSERT, char + key_map[char])
-        
-        # Move the cursor back between the pair
         self.cpp_code_text.mark_set(tk.INSERT, f"{tk.INSERT}-1c")
         return "break"
 
-    def _create_text_area_with_header(self, parent, title, paste_command):
+    def _create_text_area_with_header(self, parent, title, paste_command, clear_command):
         frame = ttk.Frame(parent, padding=5)
         frame.grid_rowconfigure(1, weight=1)
         frame.grid_columnconfigure(0, weight=1)
         header = ttk.Frame(frame)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         ttk.Label(header, text=title, font=self.title_font).pack(side=tk.LEFT)
-        if paste_command:
-            ttk.Button(header, text="Paste", command=paste_command, style="Paste.TButton").pack(side=tk.RIGHT)
+        
+        # Button Group
+        if paste_command or clear_command:
+            tool_btn_frame = ttk.Frame(header)
+            tool_btn_frame.pack(side=tk.RIGHT)
+            if paste_command:
+                ttk.Button(tool_btn_frame, text="Paste", command=paste_command, style="Tool.TButton").pack(side=tk.LEFT, padx=(0, 1))
+            if clear_command:
+                ttk.Button(tool_btn_frame, text="Clear", command=clear_command, style="Tool.TButton").pack(side=tk.LEFT)
+
         text_widget = scrolledtext.ScrolledText(frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", insertbackground="white", relief=tk.FLAT, borderwidth=0, undo=True)
         text_widget.grid(row=1, column=0, sticky="nsew")
         return frame, text_widget
@@ -181,6 +184,7 @@ class CppGraderApp(tk.Tk):
         self.diff_text.tag_config("removed", background="#4B2828", foreground="#E57373")
         self.diff_text.tag_config("equal", foreground="#9DA5B4")
 
+    # --- Page Switching ---
     def show_diff_page(self):
         self._update_diff_text()
         self.editor_frame.pack_forget()
@@ -205,8 +209,7 @@ class CppGraderApp(tk.Tk):
             self.diff_text.insert(tk.END, "Both desired and actual outputs were empty.", "equal")
         elif from_lines == to_lines:
             self.diff_text.insert(tk.END, "Outputs match perfectly.\n\n", "added")
-            for line in to_lines:
-                 self.diff_text.insert(tk.END, f"{line}\n", "equal")
+            for line in to_lines: self.diff_text.insert(tk.END, f"{line}\n", "equal")
         else:
             for tag, i1, i2, j1, j2 in matcher.get_opcodes():
                 if tag == 'equal':
@@ -217,17 +220,26 @@ class CppGraderApp(tk.Tk):
                     for line in to_lines[j1:j2]: self.diff_text.insert(tk.END, f"+ {line}\n", "added")
         self.diff_text.configure(state='disabled')
 
+    # --- Paste and Clear Methods ---
     def paste_to_cpp_code(self):
         try: self.cpp_code_text.insert(tk.INSERT, self.clipboard_get())
         except tk.TclError: self.log_status("Clipboard is empty.", "WARNING")
+    def clear_cpp_code(self): self.cpp_code_text.delete('1.0', tk.END)
 
     def paste_to_input(self):
         try: self.input_text.insert(tk.INSERT, self.clipboard_get())
         except tk.TclError: self.log_status("Clipboard is empty.", "WARNING")
+    def clear_input(self): self.input_text.delete('1.0', tk.END)
 
     def paste_to_desired_output(self):
         try: self.desired_output_text.insert(tk.INSERT, self.clipboard_get())
         except tk.TclError: self.log_status("Clipboard is empty.", "WARNING")
+    def clear_desired_output(self): self.desired_output_text.delete('1.0', tk.END)
+    
+    def clear_status(self):
+        self.status_text.configure(state='normal')
+        self.status_text.delete('1.0', tk.END)
+        self.status_text.configure(state='disabled')
 
     def log_status(self, message, tag=""):
         self.status_text.configure(state='normal')
@@ -235,12 +247,11 @@ class CppGraderApp(tk.Tk):
         self.status_text.see(tk.END)
         self.status_text.configure(state='disabled')
 
+    # --- Main Execution Logic ---
     def start_test_thread(self):
         self.run_button.config(state=tk.DISABLED, text="Running...")
         self.compare_button.config(state=tk.DISABLED)
-        self.status_text.configure(state='normal')
-        self.status_text.delete('1.0', tk.END)
-        self.status_text.configure(state='disabled')
+        self.clear_status()
         thread = threading.Thread(target=self.run_test)
         thread.daemon = True
         thread.start()
