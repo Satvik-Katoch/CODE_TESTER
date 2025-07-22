@@ -247,7 +247,7 @@ class CppGraderApp(tk.Tk):
 
     def run_test(self):
         cpp_code = self.cpp_code_text.get("1.0", tk.END)
-        input_data = self.input_text.get("1.em", tk.END)
+        input_data = self.input_text.get("1.0", tk.END)
         self.last_desired_output = self.desired_output_text.get("1.0", tk.END)
         self.last_generated_output = ""
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
