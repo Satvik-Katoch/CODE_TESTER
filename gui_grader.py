@@ -8,8 +8,8 @@ import difflib
 
 class CppGraderApp(tk.Tk):
     """
-    An advanced GUI to compile, run, and test C++ code, featuring grouped
-    Paste/Clear buttons and an enhanced code editor.
+    An advanced GUI to compile, run, and test C++ code, featuring a
+    professional, side-by-side, GitHub-style diff viewer.
     """
     def __init__(self):
         super().__init__()
@@ -53,15 +53,15 @@ class CppGraderApp(tk.Tk):
 
         nav_font = ("Segoe UI", 9)
         self.style.configure("Nav.TButton", font=nav_font, padding=(10, 4), borderwidth=1, relief=tk.FLAT)
-        self.style.map("Nav.TButton",
-            foreground=[('disabled', '#777'), ('!disabled', 'white')],
-            background=[('disabled', '#333'), ('active', '#5c6370')]
-        )
+        self.style.map("Nav.TButton", foreground=[('disabled', '#777'), ('!disabled', 'white')], background=[('disabled', '#333'), ('active', '#5c6370')])
         self.style.configure("ActiveNav.TButton", background="#007ACC", foreground="white")
         self.style.configure("InactiveNav.TButton", background="#4F5563", foreground="white")
 
         self.style.configure("TPanedWindow", background="#282C34")
         self.style.configure("Sash", background="#4F5563", borderwidth=1, relief=tk.SOLID)
+        
+        # Styles for the new diff view
+        self.style.configure("LineNumbers.TLabel", background="#2a2d32", foreground="#6c727d", padding=(5,0), font=self.code_font)
 
     def _create_main_layout(self):
         """Creates the top bar and the editor page widgets."""
@@ -84,22 +84,7 @@ class CppGraderApp(tk.Tk):
         main_pane.pack(expand=True, fill=tk.BOTH, padx=10, pady=(0, 10))
 
         # --- C++ Code Section ---
-        left_frame = ttk.Frame(main_pane, padding=(0, 5, 5, 5))
-        left_frame.grid_rowconfigure(1, weight=1)
-        left_frame.grid_columnconfigure(0, weight=1)
-        
-        cpp_header_frame = ttk.Frame(left_frame)
-        cpp_header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
-        ttk.Label(cpp_header_frame, text="C++ Code", font=self.title_font).pack(side=tk.LEFT)
-        
-        # Button Group for C++ Code
-        tool_btn_frame_cpp = ttk.Frame(cpp_header_frame)
-        tool_btn_frame_cpp.pack(side=tk.RIGHT)
-        ttk.Button(tool_btn_frame_cpp, text="Paste", command=self.paste_to_cpp_code, style="Tool.TButton").pack(side=tk.LEFT, padx=(0, 1))
-        ttk.Button(tool_btn_frame_cpp, text="Clear", command=self.clear_cpp_code, style="Tool.TButton").pack(side=tk.LEFT)
-        
-        self.cpp_code_text = scrolledtext.ScrolledText(left_frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", insertbackground="white", relief=tk.FLAT, borderwidth=0, undo=True)
-        self.cpp_code_text.grid(row=1, column=0, sticky="nsew")
+        left_frame, self.cpp_code_text = self._create_editor_pane(main_pane, "C++ Code", self.paste_to_cpp_code, self.clear_cpp_code)
         self.cpp_code_text.insert(tk.END, "#include <iostream>\n\nint main() {\n    // Your code here\n    std::cout << \"Hello, Satvik!\";\n    return 0;\n}")
         main_pane.add(left_frame, weight=2)
 
@@ -107,16 +92,19 @@ class CppGraderApp(tk.Tk):
         right_pane = ttk.PanedWindow(main_pane, orient=tk.VERTICAL)
         main_pane.add(right_pane, weight=1)
         
-        input_frame, self.input_text = self._create_text_area_with_header(right_pane, "Input", self.paste_to_input, self.clear_input)
+        input_frame, self.input_text = self._create_editor_pane(right_pane, "Input", self.paste_to_input, self.clear_input)
         right_pane.add(input_frame, weight=1)
         
-        desired_output_frame, self.desired_output_text = self._create_text_area_with_header(right_pane, "Desired Output", self.paste_to_desired_output, self.clear_desired_output)
+        desired_output_frame, self.desired_output_text = self._create_editor_pane(right_pane, "Desired Output", self.paste_to_desired_output, self.clear_desired_output)
         right_pane.add(desired_output_frame, weight=1)
         
-        status_frame, self.status_text = self._create_text_area_with_header(right_pane, "Execution Status", None, self.clear_status)
+        status_frame, self.status_text = self._create_editor_pane(right_pane, "Execution Status", None, self.clear_status)
         self.status_text.configure(state='disabled')
         right_pane.add(status_frame, weight=2)
+        
+        self._configure_status_tags()
 
+    def _configure_status_tags(self):
         self.status_text.tag_config("SUCCESS", foreground="#4CAF50", font=(self.code_font.cget("family"), self.code_font.cget("size"), "bold"))
         self.status_text.tag_config("FAILURE", foreground="#F44336", font=(self.code_font.cget("family"), self.code_font.cget("size"), "bold"))
         self.status_text.tag_config("INFO", foreground="#61AFEF")
@@ -139,10 +127,12 @@ class CppGraderApp(tk.Tk):
 
     def _handle_shift_tab(self, event):
         line_start = self.cpp_code_text.index(f"{tk.INSERT} linestart")
-        line_end = self.cpp_code_text.index(f"{tk.INSERT} lineend")
-        line = self.cpp_code_text.get(line_start, line_end)
-        if line.startswith(" " * 4):
-            self.cpp_code_text.delete(line_start, f"{line_start}+4c")
+        current_chars = self.cpp_code_text.get(line_start, f"{line_start} + 4 chars")
+        spaces_to_remove = 0
+        for char in current_chars:
+            if char == " ": spaces_to_remove += 1
+            else: break
+        if spaces_to_remove > 0: self.cpp_code_text.delete(line_start, f"{line_start} + {spaces_to_remove} chars")
         return "break"
 
     def _handle_key_pair(self, event):
@@ -152,37 +142,74 @@ class CppGraderApp(tk.Tk):
         self.cpp_code_text.mark_set(tk.INSERT, f"{tk.INSERT}-1c")
         return "break"
 
-    def _create_text_area_with_header(self, parent, title, paste_command, clear_command):
+    def _create_editor_pane(self, parent, title, paste_command, clear_command):
         frame = ttk.Frame(parent, padding=5)
         frame.grid_rowconfigure(1, weight=1)
         frame.grid_columnconfigure(0, weight=1)
+        
         header = ttk.Frame(frame)
         header.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         ttk.Label(header, text=title, font=self.title_font).pack(side=tk.LEFT)
         
-        # Button Group
         if paste_command or clear_command:
             tool_btn_frame = ttk.Frame(header)
             tool_btn_frame.pack(side=tk.RIGHT)
-            if paste_command:
-                ttk.Button(tool_btn_frame, text="Paste", command=paste_command, style="Tool.TButton").pack(side=tk.LEFT, padx=(0, 1))
-            if clear_command:
-                ttk.Button(tool_btn_frame, text="Clear", command=clear_command, style="Tool.TButton").pack(side=tk.LEFT)
+            if paste_command: ttk.Button(tool_btn_frame, text="Paste", command=paste_command, style="Tool.TButton").pack(side=tk.LEFT, padx=(0, 1))
+            if clear_command: ttk.Button(tool_btn_frame, text="Clear", command=clear_command, style="Tool.TButton").pack(side=tk.LEFT)
 
-        text_widget = scrolledtext.ScrolledText(frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", insertbackground="white", relief=tk.FLAT, borderwidth=0, undo=True)
+        text_widget = scrolledtext.ScrolledText(frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", insertbackground="white", relief=tk.FLAT, borderwidth=0, undo=True, padx=5, pady=5)
         text_widget.grid(row=1, column=0, sticky="nsew")
         return frame, text_widget
 
     def _create_diff_widgets(self):
-        self.diff_frame.columnconfigure(0, weight=1)
-        self.diff_frame.rowconfigure(1, weight=1)
-        ttk.Label(self.diff_frame, text="Output Comparison", font=self.title_font, padding=(10, 10)).grid(row=0, column=0, sticky="w")
-        self.diff_text = scrolledtext.ScrolledText(self.diff_frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", relief=tk.FLAT, borderwidth=0, padx=10)
-        self.diff_text.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
-        self.diff_text.configure(state='disabled')
-        self.diff_text.tag_config("added", background="#284028", foreground="#79B77D")
-        self.diff_text.tag_config("removed", background="#4B2828", foreground="#E57373")
-        self.diff_text.tag_config("equal", foreground="#9DA5B4")
+        """Creates the side-by-side diff view components."""
+        self.diff_frame.grid_rowconfigure(1, weight=1)
+        self.diff_frame.grid_columnconfigure(0, weight=1, uniform='group1')
+        self.diff_frame.grid_columnconfigure(1, weight=1, uniform='group1')
+
+        # --- Headers ---
+        ttk.Label(self.diff_frame, text="Expected Output", font=self.title_font, padding=10).grid(row=0, column=0, sticky="w")
+        ttk.Label(self.diff_frame, text="Your Output", font=self.title_font, padding=10).grid(row=0, column=1, sticky="w")
+
+        # --- Diff Panes ---
+        left_pane = ttk.Frame(self.diff_frame)
+        left_pane.grid(row=1, column=0, sticky='nsew', padx=(10,0), pady=(0,10))
+        left_pane.grid_rowconfigure(0, weight=1)
+        left_pane.grid_columnconfigure(1, weight=1)
+
+        right_pane = ttk.Frame(self.diff_frame)
+        right_pane.grid(row=1, column=1, sticky='nsew', padx=(5,10), pady=(0,10))
+        right_pane.grid_rowconfigure(0, weight=1)
+        right_pane.grid_columnconfigure(1, weight=1)
+
+        # --- Line Numbers ---
+        self.line_nums_left = tk.Text(left_pane, width=4, padx=5, wrap=tk.NONE, font=self.code_font, bg='#2a2d32', fg='#6c727d', relief=tk.FLAT, bd=0)
+        self.line_nums_left.grid(row=0, column=0, sticky='ns')
+        self.line_nums_right = tk.Text(right_pane, width=4, padx=5, wrap=tk.NONE, font=self.code_font, bg='#2a2d32', fg='#6c727d', relief=tk.FLAT, bd=0)
+        self.line_nums_right.grid(row=0, column=0, sticky='ns')
+
+        # --- Text Areas ---
+        self.diff_left = tk.Text(left_pane, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", relief=tk.FLAT, bd=0, padx=5)
+        self.diff_left.grid(row=0, column=1, sticky='nsew')
+        self.diff_right = tk.Text(right_pane, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", relief=tk.FLAT, bd=0, padx=5)
+        self.diff_right.grid(row=0, column=1, sticky='nsew')
+        
+        # --- Shared Scrollbar ---
+        scrollbar = ttk.Scrollbar(right_pane, command=self._on_scroll)
+        scrollbar.grid(row=0, column=2, sticky='ns')
+        self.diff_left.config(yscrollcommand=scrollbar.set)
+        self.diff_right.config(yscrollcommand=scrollbar.set)
+        
+        # --- Tags for Highlighting ---
+        self.diff_left.tag_config("removed", background="#5c2c2c")
+        self.diff_right.tag_config("added", background="#2d572d")
+
+    def _on_scroll(self, *args):
+        """Synchronizes scrolling across all four text widgets."""
+        self.diff_left.yview(*args)
+        self.diff_right.yview(*args)
+        self.line_nums_left.yview(*args)
+        self.line_nums_right.yview(*args)
 
     # --- Page Switching ---
     def show_diff_page(self):
@@ -196,29 +223,42 @@ class CppGraderApp(tk.Tk):
         self.diff_frame.pack_forget()
         self.editor_frame.pack(fill="both", expand=True)
         self.editor_button.config(style="ActiveNav.TButton")
-        if self.compare_button['state'] != tk.DISABLED:
-            self.compare_button.config(style="InactiveNav.TButton")
+        if self.compare_button['state'] != tk.DISABLED: self.compare_button.config(style="InactiveNav.TButton")
 
     def _update_diff_text(self):
-        self.diff_text.configure(state='normal')
-        self.diff_text.delete('1.0', tk.END)
+        widgets = [self.diff_left, self.diff_right, self.line_nums_left, self.line_nums_right]
+        for w in widgets: w.config(state=tk.NORMAL)
+        for w in widgets: w.delete('1.0', tk.END)
+
         from_lines = self.last_desired_output.strip().splitlines()
         to_lines = self.last_generated_output.strip().splitlines()
         matcher = difflib.SequenceMatcher(None, from_lines, to_lines)
-        if not from_lines and not to_lines:
-            self.diff_text.insert(tk.END, "Both desired and actual outputs were empty.", "equal")
-        elif from_lines == to_lines:
-            self.diff_text.insert(tk.END, "Outputs match perfectly.\n\n", "added")
-            for line in to_lines: self.diff_text.insert(tk.END, f"{line}\n", "equal")
-        else:
-            for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-                if tag == 'equal':
-                    for line in from_lines[i1:i2]: self.diff_text.insert(tk.END, f"  {line}\n", "equal")
-                if tag in ('delete', 'replace'):
-                    for line in from_lines[i1:i2]: self.diff_text.insert(tk.END, f"- {line}\n", "removed")
-                if tag in ('insert', 'replace'):
-                    for line in to_lines[j1:j2]: self.diff_text.insert(tk.END, f"+ {line}\n", "added")
-        self.diff_text.configure(state='disabled')
+        
+        left_num, right_num = 1, 1
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == 'equal':
+                for line in from_lines[i1:i2]:
+                    self.line_nums_left.insert(tk.END, f"{left_num}\n")
+                    self.line_nums_right.insert(tk.END, f"{right_num}\n")
+                    self.diff_left.insert(tk.END, f"{line}\n")
+                    self.diff_right.insert(tk.END, f"{line}\n")
+                    left_num += 1; right_num += 1
+            if tag == 'delete' or tag == 'replace':
+                for line in from_lines[i1:i2]:
+                    self.line_nums_left.insert(tk.END, f"{left_num}\n")
+                    self.line_nums_right.insert(tk.END, "\n")
+                    self.diff_left.insert(tk.END, f"{line}\n", "removed")
+                    self.diff_right.insert(tk.END, "\n")
+                    left_num += 1
+            if tag == 'insert' or tag == 'replace':
+                for line in to_lines[j1:j2]:
+                    self.line_nums_left.insert(tk.END, "\n")
+                    self.line_nums_right.insert(tk.END, f"{right_num}\n")
+                    self.diff_left.insert(tk.END, "\n")
+                    self.diff_right.insert(tk.END, f"{line}\n", "added")
+                    right_num += 1
+        
+        for w in widgets: w.config(state=tk.DISABLED)
 
     # --- Paste and Clear Methods ---
     def paste_to_cpp_code(self):
@@ -259,7 +299,7 @@ class CppGraderApp(tk.Tk):
     def run_test(self):
         cpp_code = self.cpp_code_text.get("1.0", tk.END)
         input_data = self.input_text.get("1.0", tk.END)
-        self.last_desired_output = self.desired_output_text.get("1.0", tk.END)
+        self.last_desired_output = self.desired_output_text.get("1.lo", tk.END)
         self.last_generated_output = ""
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
@@ -277,6 +317,7 @@ class CppGraderApp(tk.Tk):
                 if compile_result.stderr: self.log_status("\n--- Compiler Warnings ---\n" + compile_result.stderr, "WARNING")
                 self.log_status("   Compilation successful.", "INFO")
             except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                msg = ""
                 if isinstance(e, FileNotFoundError): msg = "Error: 'g++' not found. Is it in your PATH?"
                 elif isinstance(e, subprocess.TimeoutExpired): msg = "Error: Compilation timed out."
                 else: msg = f"Error: Compilation failed.\n\n--- Compiler Error ---\n{e.stderr}"
@@ -286,10 +327,11 @@ class CppGraderApp(tk.Tk):
 
             self.log_status("\n2. Running executable...", "INFO")
             try:
-                run_result = subprocess.run([executable_path], input=input_data, capture_output=True, text=True, check=True, timeout=5, creationflags=creation_flags)
+                run_result = subprocess.run([executable_path], input=input_data, capture_output=True, text=True, timeout=5, creationflags=creation_flags)
                 self.last_generated_output = run_result.stdout
                 if run_result.stderr: self.log_status("\n--- Runtime Messages (stderr) ---\n" + run_result.stderr, "WARNING")
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+                msg = ""
                 if isinstance(e, subprocess.TimeoutExpired): msg = "Error: Execution timed out (> 5s)."
                 else: msg = f"Error: Program crashed (exit code {e.returncode}).\n\n--- Runtime Error ---\n{e.stderr}"
                 self.log_status(msg, "ERROR")
@@ -316,7 +358,6 @@ class CppGraderApp(tk.Tk):
                     self.compare_button.config(style="InactiveNav.TButton")
                 else:
                     self.compare_button.config(style="ActiveNav.TButton")
-
         self.after(0, _update)
 
 if __name__ == "__main__":
