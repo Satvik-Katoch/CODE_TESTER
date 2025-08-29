@@ -60,7 +60,6 @@ class CppGraderApp(tk.Tk):
         self.style.configure("TPanedWindow", background="#282C34")
         self.style.configure("Sash", background="#4F5563", borderwidth=1, relief=tk.SOLID)
         
-        # Styles for the new diff view
         self.style.configure("LineNumbers.TLabel", background="#2a2d32", foreground="#6c727d", padding=(5,0), font=self.code_font)
 
     def _create_main_layout(self):
@@ -83,12 +82,10 @@ class CppGraderApp(tk.Tk):
         main_pane = ttk.PanedWindow(self.editor_frame, orient=tk.HORIZONTAL)
         main_pane.pack(expand=True, fill=tk.BOTH, padx=10, pady=(0, 10))
 
-        # --- C++ Code Section ---
         left_frame, self.cpp_code_text = self._create_editor_pane(main_pane, "C++ Code", self.paste_to_cpp_code, self.clear_cpp_code)
         self.cpp_code_text.insert(tk.END, "#include <iostream>\n\nint main() {\n    // Your code here\n    std::cout << \"Hello, Satvik!\";\n    return 0;\n}")
         main_pane.add(left_frame, weight=2)
 
-        # --- Right Pane ---
         right_pane = ttk.PanedWindow(main_pane, orient=tk.VERTICAL)
         main_pane.add(right_pane, weight=1)
         
@@ -167,11 +164,9 @@ class CppGraderApp(tk.Tk):
         self.diff_frame.grid_columnconfigure(0, weight=1, uniform='group1')
         self.diff_frame.grid_columnconfigure(1, weight=1, uniform='group1')
 
-        # --- Headers ---
         ttk.Label(self.diff_frame, text="Expected Output", font=self.title_font, padding=10).grid(row=0, column=0, sticky="w")
         ttk.Label(self.diff_frame, text="Your Output", font=self.title_font, padding=10).grid(row=0, column=1, sticky="w")
 
-        # --- Diff Panes ---
         left_pane = ttk.Frame(self.diff_frame)
         left_pane.grid(row=1, column=0, sticky='nsew', padx=(10,0), pady=(0,10))
         left_pane.grid_rowconfigure(0, weight=1)
@@ -182,25 +177,21 @@ class CppGraderApp(tk.Tk):
         right_pane.grid_rowconfigure(0, weight=1)
         right_pane.grid_columnconfigure(1, weight=1)
 
-        # --- Line Numbers ---
         self.line_nums_left = tk.Text(left_pane, width=4, padx=5, wrap=tk.NONE, font=self.code_font, bg='#2a2d32', fg='#6c727d', relief=tk.FLAT, bd=0)
         self.line_nums_left.grid(row=0, column=0, sticky='ns')
         self.line_nums_right = tk.Text(right_pane, width=4, padx=5, wrap=tk.NONE, font=self.code_font, bg='#2a2d32', fg='#6c727d', relief=tk.FLAT, bd=0)
         self.line_nums_right.grid(row=0, column=0, sticky='ns')
 
-        # --- Text Areas ---
         self.diff_left = tk.Text(left_pane, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", relief=tk.FLAT, bd=0, padx=5)
         self.diff_left.grid(row=0, column=1, sticky='nsew')
         self.diff_right = tk.Text(right_pane, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", relief=tk.FLAT, bd=0, padx=5)
         self.diff_right.grid(row=0, column=1, sticky='nsew')
         
-        # --- Shared Scrollbar ---
         scrollbar = ttk.Scrollbar(right_pane, command=self._on_scroll)
         scrollbar.grid(row=0, column=2, sticky='ns')
         self.diff_left.config(yscrollcommand=scrollbar.set)
         self.diff_right.config(yscrollcommand=scrollbar.set)
         
-        # --- Tags for Highlighting ---
         self.diff_left.tag_config("removed", background="#5c2c2c")
         self.diff_right.tag_config("added", background="#2d572d")
 
@@ -211,7 +202,6 @@ class CppGraderApp(tk.Tk):
         self.line_nums_left.yview(*args)
         self.line_nums_right.yview(*args)
 
-    # --- Page Switching ---
     def show_diff_page(self):
         self._update_diff_text()
         self.editor_frame.pack_forget()
@@ -260,7 +250,6 @@ class CppGraderApp(tk.Tk):
         
         for w in widgets: w.config(state=tk.DISABLED)
 
-    # --- Paste and Clear Methods ---
     def paste_to_cpp_code(self):
         try: self.cpp_code_text.insert(tk.INSERT, self.clipboard_get())
         except tk.TclError: self.log_status("Clipboard is empty.", "WARNING")
@@ -287,7 +276,6 @@ class CppGraderApp(tk.Tk):
         self.status_text.see(tk.END)
         self.status_text.configure(state='disabled')
 
-    # --- Main Execution Logic ---
     def start_test_thread(self):
         self.run_button.config(state=tk.DISABLED, text="Running...")
         self.compare_button.config(state=tk.DISABLED)
@@ -299,7 +287,8 @@ class CppGraderApp(tk.Tk):
     def run_test(self):
         cpp_code = self.cpp_code_text.get("1.0", tk.END)
         input_data = self.input_text.get("1.0", tk.END)
-        self.last_desired_output = self.desired_output_text.get("1.lo", tk.END)
+        # --- FIX: Corrected "1.lo" to "1.0" ---
+        self.last_desired_output = self.desired_output_text.get("1.0", tk.END)
         self.last_generated_output = ""
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
@@ -327,15 +316,18 @@ class CppGraderApp(tk.Tk):
 
             self.log_status("\n2. Running executable...", "INFO")
             try:
-                run_result = subprocess.run([executable_path], input=input_data, capture_output=True, text=True, timeout=5, creationflags=creation_flags)
+                # --- FIX: Re-added check=True for robust error handling ---
+                run_result = subprocess.run([executable_path], input=input_data, capture_output=True, text=True, check=True, timeout=5, creationflags=creation_flags)
                 self.last_generated_output = run_result.stdout
                 if run_result.stderr: self.log_status("\n--- Runtime Messages (stderr) ---\n" + run_result.stderr, "WARNING")
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
                 msg = ""
                 if isinstance(e, subprocess.TimeoutExpired): msg = "Error: Execution timed out (> 5s)."
-                else: msg = f"Error: Program crashed (exit code {e.returncode}).\n\n--- Runtime Error ---\n{e.stderr}"
+                else: 
+                    self.last_generated_output = e.stdout
+                    msg = f"Error: Program crashed (exit code {e.returncode}).\n\n--- Runtime Error ---\n{e.stderr}"
                 self.log_status(msg, "ERROR")
-                self.finalize_ui()
+                self.finalize_ui(enable_diff=True) # Enable diff even on crash
                 return
             
             self.log_status("\n3. Verifying output...", "INFO")
