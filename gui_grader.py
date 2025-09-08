@@ -192,8 +192,12 @@ class CppGraderApp(tk.Tk):
         self.diff_left.config(yscrollcommand=scrollbar.set)
         self.diff_right.config(yscrollcommand=scrollbar.set)
         
+        # --- FIX: Added "empty" tag for placeholder lines ---
         self.diff_left.tag_config("removed", background="#5c2c2c")
         self.diff_right.tag_config("added", background="#2d572d")
+        self.diff_left.tag_config("empty", background="#2c2f33")
+        self.diff_right.tag_config("empty", background="#2c2f33")
+
 
     def _on_scroll(self, *args):
         """Synchronizes scrolling across all four text widgets."""
@@ -216,6 +220,7 @@ class CppGraderApp(tk.Tk):
         if self.compare_button['state'] != tk.DISABLED: self.compare_button.config(style="InactiveNav.TButton")
 
     def _update_diff_text(self):
+        """FIX: Complete rewrite of diff logic for proper side-by-side alignment."""
         widgets = [self.diff_left, self.diff_right, self.line_nums_left, self.line_nums_right]
         for w in widgets: w.config(state=tk.NORMAL)
         for w in widgets: w.delete('1.0', tk.END)
@@ -232,22 +237,43 @@ class CppGraderApp(tk.Tk):
                     self.line_nums_right.insert(tk.END, f"{right_num}\n")
                     self.diff_left.insert(tk.END, f"{line}\n")
                     self.diff_right.insert(tk.END, f"{line}\n")
-                    left_num += 1; right_num += 1
-            if tag == 'delete' or tag == 'replace':
+                    left_num += 1
+                    right_num += 1
+            elif tag == 'delete':
                 for line in from_lines[i1:i2]:
                     self.line_nums_left.insert(tk.END, f"{left_num}\n")
                     self.line_nums_right.insert(tk.END, "\n")
                     self.diff_left.insert(tk.END, f"{line}\n", "removed")
-                    self.diff_right.insert(tk.END, "\n")
+                    self.diff_right.insert(tk.END, "\n", "empty")
                     left_num += 1
-            if tag == 'insert' or tag == 'replace':
+            elif tag == 'insert':
                 for line in to_lines[j1:j2]:
                     self.line_nums_left.insert(tk.END, "\n")
                     self.line_nums_right.insert(tk.END, f"{right_num}\n")
-                    self.diff_left.insert(tk.END, "\n")
+                    self.diff_left.insert(tk.END, "\n", "empty")
                     self.diff_right.insert(tk.END, f"{line}\n", "added")
                     right_num += 1
-        
+            elif tag == 'replace':
+                deleted_lines = from_lines[i1:i2]
+                added_lines = to_lines[j1:j2]
+                max_len = max(len(deleted_lines), len(added_lines))
+                for i in range(max_len):
+                    if i < len(deleted_lines):
+                        self.line_nums_left.insert(tk.END, f"{left_num}\n")
+                        self.diff_left.insert(tk.END, f"{deleted_lines[i]}\n", "removed")
+                        left_num += 1
+                    else:
+                        self.line_nums_left.insert(tk.END, "\n")
+                        self.diff_left.insert(tk.END, "\n", "empty")
+
+                    if i < len(added_lines):
+                        self.line_nums_right.insert(tk.END, f"{right_num}\n")
+                        self.diff_right.insert(tk.END, f"{added_lines[i]}\n", "added")
+                        right_num += 1
+                    else:
+                        self.line_nums_right.insert(tk.END, "\n")
+                        self.diff_right.insert(tk.END, "\n", "empty")
+
         for w in widgets: w.config(state=tk.DISABLED)
 
     def paste_to_cpp_code(self):
@@ -287,7 +313,6 @@ class CppGraderApp(tk.Tk):
     def run_test(self):
         cpp_code = self.cpp_code_text.get("1.0", tk.END)
         input_data = self.input_text.get("1.0", tk.END)
-        # --- FIX: Corrected "1.lo" to "1.0" ---
         self.last_desired_output = self.desired_output_text.get("1.0", tk.END)
         self.last_generated_output = ""
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
@@ -316,18 +341,18 @@ class CppGraderApp(tk.Tk):
 
             self.log_status("\n2. Running executable...", "INFO")
             try:
-                # --- FIX: Re-added check=True for robust error handling ---
                 run_result = subprocess.run([executable_path], input=input_data, capture_output=True, text=True, check=True, timeout=5, creationflags=creation_flags)
                 self.last_generated_output = run_result.stdout
                 if run_result.stderr: self.log_status("\n--- Runtime Messages (stderr) ---\n" + run_result.stderr, "WARNING")
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
-                msg = ""
-                if isinstance(e, subprocess.TimeoutExpired): msg = "Error: Execution timed out (> 5s)."
+                if isinstance(e, subprocess.TimeoutExpired): 
+                    msg = "Error: Execution timed out (> 5s)."
+                    self.last_generated_output = e.stdout if e.stdout else ""
                 else: 
-                    self.last_generated_output = e.stdout
                     msg = f"Error: Program crashed (exit code {e.returncode}).\n\n--- Runtime Error ---\n{e.stderr}"
+                    self.last_generated_output = e.stdout
                 self.log_status(msg, "ERROR")
-                self.finalize_ui(enable_diff=True) # Enable diff even on crash
+                self.finalize_ui(enable_diff=True) 
                 return
             
             self.log_status("\n3. Verifying output...", "INFO")
@@ -355,3 +380,4 @@ class CppGraderApp(tk.Tk):
 if __name__ == "__main__":
     app = CppGraderApp()
     app.mainloop()
+
