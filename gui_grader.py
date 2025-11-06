@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext, font
+from tkinter import ttk, scrolledtext, font, filedialog
 import subprocess
 import os
 import tempfile
@@ -9,7 +9,8 @@ import difflib
 class CppGraderApp(tk.Tk):
     """
     An advanced GUI to compile, run, and test C++ code, featuring a
-    professional, side-by-side, GitHub-style diff viewer.
+    professional, side-by-side, GitHub-style diff viewer and
+    support for running from a file path or the text editor.
     """
     def __init__(self):
         super().__init__()
@@ -22,6 +23,10 @@ class CppGraderApp(tk.Tk):
         
         self._configure_styles()
         
+        # --- NEW: Variables to control code source ---
+        self.cpp_file_path_var = tk.StringVar()
+        self.use_file_path_var = tk.IntVar(value=0) # 0 = use text, 1 = use file
+        
         self.editor_frame = ttk.Frame(self)
         self.diff_frame = ttk.Frame(self)
 
@@ -29,6 +34,7 @@ class CppGraderApp(tk.Tk):
         self._create_diff_widgets()
         
         self._setup_code_editor_feel()
+        self._toggle_code_source() # Set initial widget states
 
         self.show_editor_page()
 
@@ -45,11 +51,22 @@ class CppGraderApp(tk.Tk):
         self.style.configure("TLabel", background="#282C34", foreground="white", font=self.default_font)
         self.style.configure("TFrame", background="#282C34")
         
+        # --- NEW: Style for Checkbutton ---
+        self.style.configure("TCheckbutton", 
+                             background="#282C34", 
+                             foreground="white", 
+                             font=self.default_font,
+                             indicatorcolor="black") # Fix for dark mode indicator
+        self.style.map("TCheckbutton",
+                       indicatorcolor=[('selected', '#007ACC'), ('!selected', '#555')],
+                       foreground=[('active', 'white')])
+
+        
         self.style.configure("Top.TButton", font=("Segoe UI", 10, "bold"), background="#007ACC", foreground="white", borderwidth=0, padding=(10, 5))
         self.style.map("Top.TButton", background=[('active', '#005f9e')])
         
         self.style.configure("Tool.TButton", font=("Segoe UI", 8), background="#4F5563", foreground="white", borderwidth=0, padding=(5, 2))
-        self.style.map("Tool.TButton", background=[('active', '#6A7180')])
+        self.style.map("Tool.TButton", background=[('active', '#6A7180'), ('disabled', '#333')])
 
         nav_font = ("Segoe UI", 9)
         self.style.configure("Nav.TButton", font=nav_font, padding=(10, 4), borderwidth=1, relief=tk.FLAT)
@@ -59,6 +76,17 @@ class CppGraderApp(tk.Tk):
 
         self.style.configure("TPanedWindow", background="#282C34")
         self.style.configure("Sash", background="#4F5563", borderwidth=1, relief=tk.SOLID)
+        
+        self.style.configure("TEntry", 
+                             fieldbackground="#1E1E1E", 
+                             foreground="#D4D4D4", 
+                             insertbackground="white",
+                             borderwidth=0,
+                             relief=tk.FLAT,
+                             padding=3)
+        self.style.map("TEntry",
+                       foreground=[('disabled', '#555')],
+                       fieldbackground=[('disabled', '#2a2d32')])
         
         self.style.configure("LineNumbers.TLabel", background="#2a2d32", foreground="#6c727d", padding=(5,0), font=self.code_font)
 
@@ -82,9 +110,10 @@ class CppGraderApp(tk.Tk):
         main_pane = ttk.PanedWindow(self.editor_frame, orient=tk.HORIZONTAL)
         main_pane.pack(expand=True, fill=tk.BOTH, padx=10, pady=(0, 10))
 
-        left_frame, self.cpp_code_text = self._create_editor_pane(main_pane, "C++ Code", self.paste_to_cpp_code, self.clear_cpp_code)
-        self.cpp_code_text.insert(tk.END, "#include <iostream>\n\nint main() {\n    // Your code here\n    std::cout << \"Hello, Satvik!\";\n    return 0;\n}")
+        # --- UPDATED: Create C++ pane manually to add custom widgets ---
+        left_frame = self._create_cpp_pane(main_pane)
         main_pane.add(left_frame, weight=2)
+        # --- End of update ---
 
         right_pane = ttk.PanedWindow(main_pane, orient=tk.VERTICAL)
         main_pane.add(right_pane, weight=1)
@@ -100,6 +129,76 @@ class CppGraderApp(tk.Tk):
         right_pane.add(status_frame, weight=2)
         
         self._configure_status_tags()
+
+    # --- NEW: Method to create the specialized C++ pane ---
+    def _create_cpp_pane(self, parent):
+        frame = ttk.Frame(parent, padding=5)
+        frame.grid_rowconfigure(2, weight=1) # Row 2 (text editor) expands
+        frame.grid_columnconfigure(0, weight=1)
+        
+        # Row 0: Title and Paste/Clear buttons
+        header = ttk.Frame(frame)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        ttk.Label(header, text="C++ Code", font=self.title_font).pack(side=tk.LEFT, padx=(0, 10))
+        
+        tool_btn_frame = ttk.Frame(header)
+        tool_btn_frame.pack(side=tk.RIGHT)
+        ttk.Button(tool_btn_frame, text="Paste", command=self.paste_to_cpp_code, style="Tool.TButton").pack(side=tk.LEFT, padx=(0, 1))
+        ttk.Button(tool_btn_frame, text="Clear", command=self.clear_cpp_code, style="Tool.TButton").pack(side=tk.LEFT)
+
+        # Row 1: File Path Input
+        file_input_frame = ttk.Frame(frame)
+        file_input_frame.grid(row=1, column=0, sticky="ew", pady=5)
+        
+        self.check_button = ttk.Checkbutton(file_input_frame, 
+                                            text="Use File Path:", 
+                                            variable=self.use_file_path_var, 
+                                            command=self._toggle_code_source)
+        self.check_button.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.file_path_entry = ttk.Entry(file_input_frame, 
+                                         textvariable=self.cpp_file_path_var, 
+                                         font=self.code_font)
+        self.file_path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        self.browse_button = ttk.Button(file_input_frame, 
+                                        text="Browse...", 
+                                        command=self._browse_for_cpp_file, 
+                                        style="Tool.TButton")
+        self.browse_button.pack(side=tk.LEFT)
+
+        # Row 2: Text Editor
+        self.cpp_code_text = scrolledtext.ScrolledText(frame, wrap=tk.WORD, font=self.code_font, bg="#1E1E1E", fg="#D4D4D4", insertbackground="white", relief=tk.FLAT, borderwidth=0, undo=True, padx=5, pady=5)
+        self.cpp_code_text.grid(row=2, column=0, sticky="nsew")
+        self.cpp_code_text.insert(tk.END, "#include <iostream>\n\nint main() {\n    // Your code here\n    std::cout << \"Hello, Satvik!\";\n    return 0;\n}")
+
+        return frame
+    # --- End of new method ---
+
+    # --- NEW: Method to toggle between file and text input ---
+    def _toggle_code_source(self):
+        if self.use_file_path_var.get() == 1: # Use File Path
+            self.file_path_entry.config(state=tk.NORMAL)
+            self.browse_button.config(state=tk.NORMAL)
+            self.cpp_code_text.config(state=tk.DISABLED, bg="#2a2d32") # Darker bg when disabled
+        else: # Use Text Editor
+            self.file_path_entry.config(state=tk.DISABLED)
+            self.browse_button.config(state=tk.DISABLED)
+            self.cpp_code_text.config(state=tk.NORMAL, bg="#1E1E1E")
+    # --- End of new method ---
+
+    # --- UPDATED: Browse method now only sets the path variable ---
+    def _browse_for_cpp_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Select C++ File",
+            filetypes=[("C++ Files", "*.cpp"), ("Header Files", "*.h *.hpp"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+        
+        self.cpp_file_path_var.set(file_path)
+        self.log_status(f"File selected: {file_path}", "INFO")
+    # --- End of update ---
 
     def _configure_status_tags(self):
         self.status_text.tag_config("SUCCESS", foreground="#4CAF50", font=(self.code_font.cget("family"), self.code_font.cget("size"), "bold"))
@@ -140,6 +239,7 @@ class CppGraderApp(tk.Tk):
         return "break"
 
     def _create_editor_pane(self, parent, title, paste_command, clear_command):
+        """Generic helper for creating Input, Output, and Status panes."""
         frame = ttk.Frame(parent, padding=5)
         frame.grid_rowconfigure(1, weight=1)
         frame.grid_columnconfigure(0, weight=1)
@@ -192,7 +292,6 @@ class CppGraderApp(tk.Tk):
         self.diff_left.config(yscrollcommand=scrollbar.set)
         self.diff_right.config(yscrollcommand=scrollbar.set)
         
-        # --- FIX: Added "empty" tag for placeholder lines ---
         self.diff_left.tag_config("removed", background="#5c2c2c")
         self.diff_right.tag_config("added", background="#2d572d")
         self.diff_left.tag_config("empty", background="#2c2f33")
@@ -279,7 +378,10 @@ class CppGraderApp(tk.Tk):
     def paste_to_cpp_code(self):
         try: self.cpp_code_text.insert(tk.INSERT, self.clipboard_get())
         except tk.TclError: self.log_status("Clipboard is empty.", "WARNING")
-    def clear_cpp_code(self): self.cpp_code_text.delete('1.0', tk.END)
+    
+    def clear_cpp_code(self): 
+        self.cpp_code_text.delete('1.0', tk.END)
+        # Note: We don't clear the file path, as it's a separate input
 
     def paste_to_input(self):
         try: self.input_text.insert(tk.INSERT, self.clipboard_get())
@@ -310,22 +412,55 @@ class CppGraderApp(tk.Tk):
         thread.daemon = True
         thread.start()
 
+    # --- CRITICAL UPDATE: run_test now decides which code source to use ---
     def run_test(self):
-        cpp_code = self.cpp_code_text.get("1.0", tk.END)
         input_data = self.input_text.get("1.0", tk.END)
         self.last_desired_output = self.desired_output_text.get("1.0", tk.END)
         self.last_generated_output = ""
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            cpp_source_path = os.path.join(temp_dir, "main.cpp")
             executable_path = os.path.join(temp_dir, "main_executable")
-            with open(cpp_source_path, "w", encoding='utf-8') as f: f.write(cpp_code)
+            compile_command = []
             
             self.log_status("--- Starting Test ---", "INFO")
-            self.log_status("1. Compiling...", "INFO")
-            compile_command = ["g++", "-O2", "-Wall", cpp_source_path, "-o", executable_path]
 
+            # --- DECISION LOGIC ---
+            if self.use_file_path_var.get() == 1:
+                # --- 1. Use code from FILE PATH ---
+                cpp_source_path = self.cpp_file_path_var.get().strip()
+
+                if not cpp_source_path:
+                    self.log_status("Error: 'Use File Path' is checked, but no file path is provided.", "ERROR")
+                    self.finalize_ui()
+                    return
+                
+                if not os.path.exists(cpp_source_path):
+                    self.log_status(f"Error: File not found at path:\n{cpp_source_path}", "ERROR")
+                    self.finalize_ui()
+                    return
+
+                self.log_status(f"Using code from file: {os.path.basename(cpp_source_path)}", "INFO")
+                compile_command = ["g++", "-O2", "-Wall", cpp_source_path, "-o", executable_path]
+
+            else:
+                # --- 2. Use code from TEXT EDITOR ---
+                cpp_code = self.cpp_code_text.get("1.0", tk.END)
+                if not cpp_code.strip():
+                    self.log_status("Error: Code editor is empty. Nothing to compile.", "ERROR")
+                    self.finalize_ui()
+                    return
+
+                cpp_source_path = os.path.join(temp_dir, "main.cpp")
+                with open(cpp_source_path, "w", encoding='utf-8') as f: 
+                    f.write(cpp_code)
+                
+                self.log_status("Using code from text editor.", "INFO")
+                compile_command = ["g++", "-O2", "-Wall", cpp_source_path, "-o", executable_path]
+            # --- END DECISION LOGIC ---
+            
+            
+            self.log_status("1. Compiling...", "INFO")
             try:
                 compile_result = subprocess.run(compile_command, capture_output=True, text=True, check=True, timeout=10, creationflags=creation_flags)
                 if compile_result.stderr: self.log_status("\n--- Compiler Warnings ---\n" + compile_result.stderr, "WARNING")
@@ -380,4 +515,3 @@ class CppGraderApp(tk.Tk):
 if __name__ == "__main__":
     app = CppGraderApp()
     app.mainloop()
-
