@@ -107,6 +107,42 @@ bool is_prime(ll n) {
     }
     return true;
 }
+long long nCr_pascal(int n, int r) {
+    if (r < 0 || r > n) return 0;
+    if (r == 0 || r == n) return 1;
+
+    // Use the identity C(n, r) = C(n, n-r)
+    if (r > n - r){r = n - r;}
+
+    // Create a 1D vector to store C(i, j) values for the current row i.
+    // We only need the previous row's values, so we optimize space.
+    vector<long long> C(r + 1, 0);
+    C[0] = 1; // C(i, 0) is always 1
+
+    for (int i = 1; i <= n; i++) {
+        // Compute C(i, j) using values from the previous row C(i-1, j) and C(i-1, j-1)
+        // j iterates in reverse to use C[j] (C(i-1, j)) before it gets overwritten
+        for (int j = min(i, r); j > 0; j--) {
+            C[j] = C[j] + C[j - 1];
+        }
+    }
+
+    // The result C(n, r) is stored at C[r]
+    return C[r];
+}
+set<long long> getPrimeFactors(long long n) {
+    vector<long long> factors;
+    while(n%2==0){factors.push_back(2);n/=2;}
+    for(long long i=3;i<=sqrt(n);i+=2) {
+        while(n%i==0){factors.push_back(i);n /= i;}
+    }
+    if(n>2){factors.push_back(n);}
+    set<long long>val;
+    for(int i=0;i<factors.size();i++){
+        val.insert(factors[i]);
+    }
+    return val;
+}
 
 // Binary search functions
 template<typename T>
@@ -130,16 +166,16 @@ const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 // ====================
 // MAIN FUNCTION TEMPLATE
 // ====================
-void solve() {
-    // Your solution code goes here
-    
+
+void solve(){
+
 }
 
 int main() {
     fast_io;
     
     int t = 1;
-    // cin >> t;  // Uncomment for multiple test cases
+    cin >> t;  // Uncomment for multiple test cases
     
     while (t--) {
         solve();
