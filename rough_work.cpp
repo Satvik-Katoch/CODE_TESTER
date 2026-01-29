@@ -8,18 +8,18 @@ typedef long long ll;
 typedef unsigned long long ull;
 typedef long double ld;
 typedef pair<int, int> pii;
-typedef pair<ll, ll> pll;
+typedef pair<ull, ull> pull;
 typedef vector<int> vi;
-typedef vector<ll> vll;
+typedef vector<ull> vull;
 typedef vector<pii> vpii;
-typedef vector<pll> vpll;
+typedef vector<pull> vpull;
 typedef vector<string> vs;
 typedef vector<vi> vvi;
-typedef vector<vll> vvll;
+typedef vector<vull> vvull;
 typedef map<int, int> mii;
-typedef map<ll, ll> mll;
+typedef map<ull, ull> mull;
 typedef set<int> si;
-typedef set<ll> sll;
+typedef set<ull> sull;
 
 // ====================
 // COMMONLY USED MACROS
@@ -61,7 +61,7 @@ typedef set<ll> sll;
 // ====================
 const int MOD = 1e9 + 7;
 const int MOD2 = 998244353;
-const ll INF = 1e18;
+const ull INF = 1e18;
 const int MAXN = 2e5 + 5;
 const double EPS = 1e-9;
 const double PI = acos(-1.0);
@@ -71,8 +71,8 @@ const double PI = acos(-1.0);
 // ====================
 
 // Fast power function with modular arithmetic
-ll power(ll a, ll b, ll mod = MOD) {
-    ll result = 1;
+ull power(ull a, ull b, ull mod = MOD) {
+    ull result = 1;
     a %= mod;
     while (b > 0) {
         if (b & 1) result = (result * a) % mod;
@@ -83,26 +83,26 @@ ll power(ll a, ll b, ll mod = MOD) {
 }
 
 // Modular inverse using Fermat's little theorem
-ll mod_inverse(ll a, ll mod = MOD) {
+ull mod_inverse(ull a, ull mod = MOD) {
     return power(a, mod - 2, mod);
 }
 
 // GCD function (already available in C++14+ as __gcd or std::gcd in C++17)
-ll gcd(ll a, ll b) {
+ull gcd(ull a, ull b) {
     return b == 0 ? a : gcd(b, a % b);
 }
 
 // LCM function
-ll lcm(ll a, ll b) {
+ull lcm(ull a, ull b) {
     return (a / gcd(a, b)) * b;
 }
 
 // Check if a number is prime
-bool is_prime(ll n) {
+bool is_prime(ull n) {
     if (n <= 1) return false;
     if (n <= 3) return true;
     if (n % 2 == 0 || n % 3 == 0) return false;
-    for (ll i = 5; i * i <= n; i += 6) {
+    for (ull i = 5; i * i <= n; i += 6) {
         if (n % i == 0 || n % (i + 2) == 0) return false;
     }
     return true;
@@ -155,6 +155,10 @@ int upper_bound_index(vector<T>& arr, T val) {
     return upper_bound(all(arr), val) - arr.begin();
 }
 
+long long truemod(long long k, long long n) {
+    return ((k %= n) < 0) ? k + n : k;
+}
+
 // ====================
 // DIRECTION ARRAYS
 // ====================
@@ -168,7 +172,26 @@ const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 // ====================
 
 void solve(){
+    int n,q;
+    cin>>n>>q;
+    vector<int>ans(n);
+    for(int i=0;i<n;i++){
+        cin>>ans[i];
+    }
+    sort(ans.begin(),ans.end());
+    reverse(ans.begin(),ans.end());
 
+    vector<int>prefix(n+1,ans[0]);
+    for(int i=1;i<n+1;i++){
+        prefix[i]=prefix[i-1]+ans[i-1];
+    }
+    for(int i=0;i<q;i++){
+        int a;
+        cin>>a;
+        int idx=lower_bound_index(prefix,a);
+        if(idx>=prefix.size()){cout<<-1<<endl;}
+        else{cout<<idx+1<<endl;}
+    }
 }
 
 int main() {
@@ -192,10 +215,10 @@ int main() {
 // Segment Tree Template (uncomment when needed)
 class SegmentTree {
 private:
-    vector<ll> tree;
+    vector<ull> tree;
     int n;
     
-    void build(vector<ll>& arr, int node, int start, int end) {
+    void build(vector<ull>& arr, int node, int start, int end) {
         if (start == end) {
             tree[node] = arr[start];
         } else {
@@ -206,7 +229,7 @@ private:
         }
     }
     
-    void update(int node, int start, int end, int idx, ll val) {
+    void update(int node, int start, int end, int idx, ull val) {
         if (start == end) {
             tree[node] = val;
         } else {
@@ -220,7 +243,7 @@ private:
         }
     }
     
-    ll query(int node, int start, int end, int l, int r) {
+    ull query(int node, int start, int end, int l, int r) {
         if (r < start || end < l) return 0;
         if (l <= start && end <= r) return tree[node];
         int mid = (start + end) / 2;
@@ -229,14 +252,14 @@ private:
     }
     
 public:
-    SegmentTree(vector<ll>& arr) {
+    SegmentTree(vector<ull>& arr) {
         n = arr.size();
         tree.resize(4 * n);
         build(arr, 1, 0, n-1);
     }
     
-    void update(int idx, ll val) { update(1, 0, n-1, idx, val); }
-    ll query(int l, int r) { return query(1, 0, n-1, l, r); }
+    void update(int idx, ull val) { update(1, 0, n-1, idx, val); }
+    ull query(int l, int r) { return query(1, 0, n-1, l, r); }
 };
 */
 
