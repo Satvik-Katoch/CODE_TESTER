@@ -172,26 +172,7 @@ const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 // ====================
 
 void solve(){
-    int n,q;
-    cin>>n>>q;
-    vector<int>ans(n);
-    for(int i=0;i<n;i++){
-        cin>>ans[i];
-    }
-    sort(ans.begin(),ans.end());
-    reverse(ans.begin(),ans.end());
 
-    vector<int>prefix(n+1,ans[0]);
-    for(int i=1;i<n+1;i++){
-        prefix[i]=prefix[i-1]+ans[i-1];
-    }
-    for(int i=0;i<q;i++){
-        int a;
-        cin>>a;
-        int idx=lower_bound_index(prefix,a);
-        if(idx>=prefix.size()){cout<<-1<<endl;}
-        else{cout<<idx+1<<endl;}
-    }
 }
 
 int main() {
