@@ -1,25 +1,22 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// ====================
-// BASIC TYPEDEFS
-// ====================
 typedef long long ll;
 typedef unsigned long long ull;
 typedef long double ld;
 typedef pair<int, int> pii;
-typedef pair<ull, ull> pull;
+typedef pair<ll, ll> pll;
 typedef vector<int> vi;
-typedef vector<ull> vull;
+typedef vector<ll> vll;
 typedef vector<pii> vpii;
-typedef vector<pull> vpull;
+typedef vector<pll> vpll;
 typedef vector<string> vs;
 typedef vector<vi> vvi;
-typedef vector<vull> vvull;
+typedef vector<vll> vvll;
 typedef map<int, int> mii;
-typedef map<ull, ull> mull;
+typedef map<ll, ll> mll;
 typedef set<int> si;
-typedef set<ull> sull;
+typedef set<ll> sll;
 
 // ====================
 // COMMONLY USED MACROS
@@ -61,7 +58,7 @@ typedef set<ull> sull;
 // ====================
 const int MOD = 1e9 + 7;
 const int MOD2 = 998244353;
-const ull INF = 1e18;
+const ll INF = 1e18;
 const int MAXN = 2e5 + 5;
 const double EPS = 1e-9;
 const double PI = acos(-1.0);
@@ -71,8 +68,8 @@ const double PI = acos(-1.0);
 // ====================
 
 // Fast power function with modular arithmetic
-ull power(ull a, ull b, ull mod = MOD) {
-    ull result = 1;
+ll power(ll a, ll b, ll mod = MOD) {
+    ll result = 1;
     a %= mod;
     while (b > 0) {
         if (b & 1) result = (result * a) % mod;
@@ -83,30 +80,42 @@ ull power(ull a, ull b, ull mod = MOD) {
 }
 
 // Modular inverse using Fermat's little theorem
-ull mod_inverse(ull a, ull mod = MOD) {
+ll mod_inverse(ll a, ll mod = MOD) {
     return power(a, mod - 2, mod);
 }
 
 // GCD function (already available in C++14+ as __gcd or std::gcd in C++17)
-ull gcd(ull a, ull b) {
+ll gcd(ll a, ll b) {
     return b == 0 ? a : gcd(b, a % b);
 }
 
 // LCM function
-ull lcm(ull a, ull b) {
+ll lcm(ll a, ll b) {
     return (a / gcd(a, b)) * b;
 }
 
 // Check if a number is prime
-bool is_prime(ull n) {
+bool is_prime(ll n) {
     if (n <= 1) return false;
     if (n <= 3) return true;
     if (n % 2 == 0 || n % 3 == 0) return false;
-    for (ull i = 5; i * i <= n; i += 6) {
+    for (ll i = 5; i * i <= n; i += 6) {
         if (n % i == 0 || n % (i + 2) == 0) return false;
     }
     return true;
 }
+
+// Binary search functions
+template<typename T>
+int lower_bound_index(vector<T>& arr, T val) {
+    return lower_bound(all(arr), val) - arr.begin();
+}
+
+template<typename T>
+int upper_bound_index(vector<T>& arr, T val) {
+    return upper_bound(all(arr), val) - arr.begin();
+}
+
 long long nCr_pascal(int n, int r) {
     if (r < 0 || r > n) return 0;
     if (r == 0 || r == n) return 1;
@@ -142,17 +151,6 @@ set<long long> getPrimeFactors(long long n) {
         val.insert(factors[i]);
     }
     return val;
-}
-
-// Binary search functions
-template<typename T>
-int lower_bound_index(vector<T>& arr, T val) {
-    return lower_bound(all(arr), val) - arr.begin();
-}
-
-template<typename T>
-int upper_bound_index(vector<T>& arr, T val) {
-    return upper_bound(all(arr), val) - arr.begin();
 }
 
 long long truemod(long long k, long long n) {
