@@ -174,12 +174,6 @@ const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 // ======================
 
 void solve() {
-    ll n,l,r;
-    cin>>n>>l>>r;
-    vector<ll>ans(n);
-    for(ll i=0;i<n;i++){
-        cin>>ans[i];
-    }
 
 }
 
