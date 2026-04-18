@@ -1,6 +1,10 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+// ====================
+// BASIC TYPEDEFS
+// ====================
+
 typedef long long ll;
 typedef unsigned long long ull;
 typedef long double ld;
@@ -165,17 +169,23 @@ const int dy[] = {0, 0, -1, 1};
 const int dx8[] = {-1, -1, -1, 0, 0, 1, 1, 1};  // 8-directional movement
 const int dy8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 
-// ====================
+// ======================
 // MAIN FUNCTION TEMPLATE
-// ====================
+// ======================
 
-void solve(){
+void solve() {
+    ll n,l,r;
+    cin>>n>>l>>r;
+    vector<ll>ans(n);
+    for(ll i=0;i<n;i++){
+        cin>>ans[i];
+    }
 
 }
 
 int main() {
     fast_io;
-    
+
     int t = 1;
     cin >> t;  // Uncomment for multiple test cases
     
@@ -194,10 +204,10 @@ int main() {
 // Segment Tree Template (uncomment when needed)
 class SegmentTree {
 private:
-    vector<ull> tree;
+    vector<ll> tree;
     int n;
     
-    void build(vector<ull>& arr, int node, int start, int end) {
+    void build(vector<ll>& arr, int node, int start, int end) {
         if (start == end) {
             tree[node] = arr[start];
         } else {
@@ -208,7 +218,7 @@ private:
         }
     }
     
-    void update(int node, int start, int end, int idx, ull val) {
+    void update(int node, int start, int end, int idx, ll val) {
         if (start == end) {
             tree[node] = val;
         } else {
@@ -222,7 +232,7 @@ private:
         }
     }
     
-    ull query(int node, int start, int end, int l, int r) {
+    ll query(int node, int start, int end, int l, int r) {
         if (r < start || end < l) return 0;
         if (l <= start && end <= r) return tree[node];
         int mid = (start + end) / 2;
@@ -231,14 +241,14 @@ private:
     }
     
 public:
-    SegmentTree(vector<ull>& arr) {
+    SegmentTree(vector<ll>& arr) {
         n = arr.size();
         tree.resize(4 * n);
         build(arr, 1, 0, n-1);
     }
     
-    void update(int idx, ull val) { update(1, 0, n-1, idx, val); }
-    ull query(int l, int r) { return query(1, 0, n-1, l, r); }
+    void update(int idx, ll val) { update(1, 0, n-1, idx, val); }
+    ll query(int l, int r) { return query(1, 0, n-1, l, r); }
 };
 */
 
@@ -271,4 +281,57 @@ public:
     
     bool same(int x, int y) { return find(x) == find(y); }
 };
+
+class MergeSortTree {
+private:
+    int n;
+    vector<vll> tree;
+
+    // Build the tree by merging sorted vectors of children
+    void build(const vll& arr, int node, int start, int end) {
+        if (start == end) {
+            tree[node].push_back(arr[start]);
+            return;
+        }
+        int mid = (start + end) / 2;
+        build(arr, 2 * node, start, mid);
+        build(arr, 2 * node + 1, mid + 1, end);
+        
+        // Merge the two sorted children in O(RangeSize)
+        tree[node].resize(end - start + 1);
+        merge(all(tree[2 * node]), all(tree[2 * node + 1]), tree[node].begin());
+    }
+
+    // Query the range [ql, qr] for values in [valL, valR]
+    ll query(int node, int start, int end, int ql, int qr, ll valL, ll valR) {
+        // Fully outside
+        if (qr < start || end < ql) return 0;
+        
+        // Fully inside: Use binary search to count values in [valL, valR]
+        if (ql <= start && end <= qr) {
+            // Number of elements <= valR minus number of elements < valL
+            auto it1 = lower_bound(all(tree[node]), valL);
+            auto it2 = upper_bound(all(tree[node]), valR);
+            return distance(it1, it2);
+        }
+
+        int mid = (start + end) / 2;
+        return query(2 * node, start, mid, ql, qr, valL, valR) +
+               query(2 * node + 1, mid + 1, end, ql, qr, valL, valR);
+    }
+
+public:
+    MergeSortTree(const vll& arr) {
+        n = arr.size();
+        tree.resize(4 * n + 1);
+        build(arr, 1, 0, n - 1);
+    }
+
+    // Returns count of elements in arr[ql...qr] that are in [valL, valR]
+    ll query(int ql, int qr, ll valL, ll valR) {
+        if (ql > qr) return 0;
+        return query(1, 0, n - 1, ql, qr, valL, valR);
+    }
+};
+
 */
