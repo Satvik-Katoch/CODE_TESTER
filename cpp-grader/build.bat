@@ -20,6 +20,14 @@ if /i not "%~1"=="--javac" (
             exit /b 1
         )
         echo [build] OK  -^> target\cpp-grader.jar
+        
+        set "INSTALL_DIR=%LOCALAPPDATA%\Programs\CppGrader\app"
+        if exist "!INSTALL_DIR!" (
+            echo [build] Updating desktop installation...
+            copy /Y target\cpp-grader.jar "!INSTALL_DIR!\cpp-grader.jar" >nul
+            echo [build] App updated successfully!
+        )
+        
         exit /b 0
     )
     echo [build] Maven not found - falling back to javac.
@@ -55,4 +63,13 @@ if errorlevel 1 (
     exit /b 1
 )
 echo [build] OK  -^> target\cpp-grader.jar
+
+rem --- Update the installed app if it exists ---
+set "INSTALL_DIR=%LOCALAPPDATA%\Programs\CppGrader\app"
+if exist "%INSTALL_DIR%" (
+    echo [build] Updating desktop installation...
+    copy /Y target\cpp-grader.jar "%INSTALL_DIR%\cpp-grader.jar" >nul
+    echo [build] App updated successfully!
+)
+
 exit /b 0

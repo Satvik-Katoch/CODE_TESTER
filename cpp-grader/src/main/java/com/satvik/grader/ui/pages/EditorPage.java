@@ -48,7 +48,21 @@ public class EditorPage extends JPanel {
         editorLabel.setFont(Theme.TITLE_FONT);
         editorLabel.setForeground(Theme.TEXT_PRIMARY);
         editorLabel.setBorder(BorderFactory.createEmptyBorder(10, 15, 5, 15));
-        headerPanel.add(editorLabel, BorderLayout.NORTH);
+        headerPanel.add(editorLabel, BorderLayout.WEST);
+        
+        JPanel editorTools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        editorTools.setOpaque(false);
+        editorTools.setBorder(BorderFactory.createEmptyBorder(10, 15, 0, 15));
+        
+        GlassButton editorPaste = new GlassButton("Paste");
+        editorPaste.addActionListener(e -> codeEditor.paste());
+        editorTools.add(editorPaste);
+        
+        GlassButton editorClear = new GlassButton("Clear");
+        editorClear.addActionListener(e -> codeEditor.setText(""));
+        editorTools.add(editorClear);
+        
+        headerPanel.add(editorTools, BorderLayout.EAST);
         
         JPanel fileInputPanel = new JPanel(new GridBagLayout());
         fileInputPanel.setOpaque(false);
@@ -77,7 +91,7 @@ public class EditorPage extends JPanel {
         headerPanel.add(fileInputPanel, BorderLayout.SOUTH);
         
         editorContainer.add(headerPanel, BorderLayout.NORTH);
-        editorContainer.add(codeEditor, BorderLayout.CENTER);
+        editorContainer.add(com.satvik.grader.ui.components.UiKit.scroll(codeEditor), BorderLayout.CENTER);
         
         useFilePathCheckbox.addActionListener(e -> {
             boolean useFile = useFilePathCheckbox.isSelected();
@@ -101,8 +115,8 @@ public class EditorPage extends JPanel {
         GlassSplitPane rightSplit1 = new GlassSplitPane(JSplitPane.VERTICAL_SPLIT);
         rightSplit1.setResizeWeight(0.5);
 
-        rightSplit1.setLeftComponent(createPanel("Input", inputArea));
-        rightSplit1.setRightComponent(createPanel("Expected Output", expectedArea));
+        rightSplit1.setLeftComponent(createPanel("Input", inputArea, true));
+        rightSplit1.setRightComponent(createPanel("Expected Output", expectedArea, true));
 
         GlassSplitPane rightSplit2 = new GlassSplitPane(JSplitPane.VERTICAL_SPLIT);
         rightSplit2.setResizeWeight(0.6);
@@ -126,7 +140,7 @@ public class EditorPage extends JPanel {
         statusHeader.add(statsLabel, BorderLayout.EAST);
         
         statusContainer.add(statusHeader, BorderLayout.NORTH);
-        statusContainer.add(statusPane, BorderLayout.CENTER);
+        statusContainer.add(com.satvik.grader.ui.components.UiKit.scroll(statusPane), BorderLayout.CENTER);
 
         rightSplit2.setRightComponent(new SurfacePanel(statusContainer, null));
 
@@ -135,15 +149,36 @@ public class EditorPage extends JPanel {
         add(mainSplit, BorderLayout.CENTER);
     }
 
-    private SurfacePanel createPanel(String title, PlainTextArea textArea) {
+    private SurfacePanel createPanel(String title, PlainTextArea textArea, boolean canPaste) {
         JPanel container = new JPanel(new BorderLayout());
         container.setOpaque(false);
+        
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        
         JLabel label = new JLabel(title);
         label.setFont(Theme.TITLE_FONT);
         label.setForeground(Theme.TEXT_PRIMARY);
-        label.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        container.add(label, BorderLayout.NORTH);
-        container.add(textArea, BorderLayout.CENTER);
+        header.add(label, BorderLayout.WEST);
+        
+        JPanel tools = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        tools.setOpaque(false);
+        
+        if (canPaste) {
+            GlassButton pasteBtn = new GlassButton("Paste");
+            pasteBtn.addActionListener(e -> textArea.paste());
+            tools.add(pasteBtn);
+        }
+        GlassButton clearBtn = new GlassButton("Clear");
+        clearBtn.addActionListener(e -> textArea.setText(""));
+        tools.add(clearBtn);
+        
+        header.add(tools, BorderLayout.EAST);
+        
+        container.add(header, BorderLayout.NORTH);
+        container.add(com.satvik.grader.ui.components.UiKit.scroll(textArea), BorderLayout.CENTER);
+        
         return new SurfacePanel(container, null);
     }
 

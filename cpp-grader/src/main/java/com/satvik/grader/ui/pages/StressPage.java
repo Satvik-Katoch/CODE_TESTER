@@ -39,7 +39,7 @@ public class StressPage extends JPanel {
 
         // Generator Config
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
-        JLabel genLabel = new JLabel("Generator Script (Java):");
+        JLabel genLabel = new JLabel("Generator Script (Java/C++):");
         genLabel.setFont(Theme.UI_FONT);
         genLabel.setForeground(Theme.TEXT_PRIMARY);
         configContainer.add(genLabel, gbc);
@@ -50,7 +50,7 @@ public class StressPage extends JPanel {
 
         gbc.gridx = 2; gbc.weightx = 0;
         GlassButton genBrowseBtn = new GlassButton("Browse");
-        genBrowseBtn.addActionListener(e -> browseFile(genPathField, "Java Files", "*.java"));
+        genBrowseBtn.addActionListener(e -> browseFile(genPathField, "Java or C++ Files", "*.java", "*.cpp", "*.cxx", "*.cc"));
         configContainer.add(genBrowseBtn, gbc);
 
         // Brute Force Config
@@ -128,14 +128,20 @@ public class StressPage extends JPanel {
         label.setForeground(Theme.TEXT_PRIMARY);
         label.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
         container.add(label, BorderLayout.NORTH);
-        container.add(textArea, BorderLayout.CENTER);
+        container.add(com.satvik.grader.ui.components.UiKit.scroll(textArea), BorderLayout.CENTER);
         return new SurfacePanel(container, null);
     }
 
-    private void browseFile(GlassTextField field, String desc, String ext) {
+    private void browseFile(GlassTextField field, String desc, String... exts) {
         JFileChooser chooser = new JFileChooser();
         chooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(desc, ext.replace("*.", "")));
+        
+        String[] cleanExts = new String[exts.length];
+        for (int i = 0; i < exts.length; i++) {
+            cleanExts[i] = exts[i].replace("*.", "");
+        }
+        
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(desc, cleanExts));
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             field.setText(chooser.getSelectedFile().getAbsolutePath());
         }

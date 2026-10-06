@@ -32,6 +32,8 @@ public final class StressTester implements Runnable {
             return kind == Kind.MISMATCH || kind == Kind.MAIN_FAILED;
         }
     }
+    
+    private record GenBuildResult(boolean success, String diagnostics, java.util.function.Function<String, List<String>> runCommand) {}
 
     public interface Listener {
         void onStatus(String text, Tone tone);
@@ -116,15 +118,27 @@ public final class StressTester implements Runnable {
         ProcessRunner genRunner = newRunner();
         ProcessRunner bruteRunner = newRunner();
         ProcessRunner mainRunner = newRunner();
-        CompletableFuture<JavaGenerator.Build> fGen = CompletableFuture.supplyAsync(
-                () -> JavaGenerator.compile(genRunner, cfg.generator(), genClasses, COMPILE_TIMEOUT), POOL);
+        
+        boolean isCppGen = cfg.generator().toString().matches(".*\\.(cpp|cxx|cc)$");
+        Path cppGenExe = CppCompiler.exePath(dir, "gen");
+        
+        CompletableFuture<GenBuildResult> fGen = CompletableFuture.supplyAsync(() -> {
+            if (isCppGen) {
+                CppCompiler.Result cr = CppCompiler.compile(genRunner, cfg.compiler(), cfg.generator(), cppGenExe, cfg.flags(), COMPILE_TIMEOUT);
+                return new GenBuildResult(cr.success(), cr.diagnostics(), seed -> List.of(cppGenExe.toString(), seed));
+            } else {
+                JavaGenerator.Build jb = JavaGenerator.compile(genRunner, cfg.generator(), genClasses, COMPILE_TIMEOUT);
+                return new GenBuildResult(jb.success(), jb.diagnostics(), seed -> JavaGenerator.runCommand(jb, seed));
+            }
+        }, POOL);
+        
         CompletableFuture<CppCompiler.Result> fBrute = CompletableFuture.supplyAsync(
                 () -> CppCompiler.compile(bruteRunner, cfg.compiler(), cfg.brute(), bruteExe, cfg.flags(), COMPILE_TIMEOUT), POOL);
         Path finalMainSrc = mainSrc;
         CompletableFuture<CppCompiler.Result> fMain = CompletableFuture.supplyAsync(
                 () -> CppCompiler.compile(mainRunner, cfg.compiler(), finalMainSrc, optExe, cfg.flags(), COMPILE_TIMEOUT), POOL);
 
-        JavaGenerator.Build gen = fGen.join();
+        GenBuildResult gen = fGen.join();
         CppCompiler.Result brute = fBrute.join();
         CppCompiler.Result main = fMain.join();
 
@@ -157,7 +171,7 @@ public final class StressTester implements Runnable {
             listener.onStatus("Running Test " + i + "/" + n + "...", Tone.INFO);
 
             // 1. Generate input (seed = iteration number)
-            ProcessRunner.Result g = runner.run(JavaGenerator.runCommand(gen, String.valueOf(i)), dir, null, genTimeout);
+            ProcessRunner.Result g = runner.run(gen.runCommand().apply(String.valueOf(i)), dir, null, genTimeout);
             if (stopped || g.cancelled()) {
                 return stoppedAt(i - 1);
             }
